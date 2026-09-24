@@ -4,7 +4,7 @@
 //   "deleteOriginal": false         — delete original after splitting (default false)
 // }
 // Each top-level shape group becomes its own layer
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

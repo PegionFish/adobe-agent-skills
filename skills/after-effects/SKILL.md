@@ -4,23 +4,80 @@ description: >
   Automate Adobe After Effects via ExtendScript. Use when the user asks to
   create, modify, or query anything in an After Effects project — layers,
   keyframes, expressions, effects, compositions, assets, rendering, batch
-  operations. Generates and executes JSX ExtendScript via osascript on macOS.
-compatibility: Requires macOS with Adobe After Effects installed. Needs "Allow Scripts to Write Files and Access Network" enabled in AE Preferences > Scripting & Expressions.
-allowed-tools: Bash(osascript *) Bash(chmod *) Bash(bash *) Read Write
+  operations. Generates and executes JSX ExtendScript via osascript on macOS
+  or via a PowerShell runner on Windows (hidden AE engine or in-AE listener).
+compatibility: Requires Adobe After Effects installed. macOS uses the bash/JXA runner (runner.sh). Windows uses the PowerShell runner (runner.ps1, PowerShell 5.1+), which drives either a hidden AE engine instance or a live AE via ae-listener.jsx. Needs "Allow Scripts to Write Files and Access Network" enabled in AE Preferences > Scripting & Expressions.
+allowed-tools: Bash(osascript *) Bash(chmod *) Bash(bash *) Bash(powershell *) Read Write
 metadata:
   author: aedev-tools
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Overview
 
-This skill automates After Effects by generating ExtendScript (.jsx) and executing it via osascript. It reads project state through query scripts, uses rule files for domain knowledge, and wraps all mutations in undo groups.
+This skill automates After Effects by generating ExtendScript (.jsx) and executing it through a platform runner. It reads project state through query scripts, uses rule files for domain knowledge, and wraps all mutations in undo groups.
+
+## Platform dispatch (read first)
+
+Pick the runner for the current OS. Everything else in this document is written once, using `$SKILL_RUN` as the placeholder for the platform command:
+
+| OS | Runner | `$SKILL_RUN` |
+|---|---|---|
+| macOS | `scripts/runner.sh` (bash + osascript/JXA) | `bash "$SKILL_SCRIPTS/runner.sh"` |
+| Windows | `scripts/runner.ps1` (PowerShell) | `powershell -NoProfile -ExecutionPolicy Bypass -File "$SKILL_SCRIPTS\runner.ps1"` |
+
+On Windows, `scripts\ae-run.cmd` wraps `runner.ps1`, so `ae-run.cmd -Background scripts\active-state.jsx` is equivalent to the long form.
+
+### Windows execution modes (measured on AE 26.2, 2026-09-24)
+
+After Effects on Windows is **strictly single-instance**. While an AE window is
+open, a second `AfterFX.exe` call (with `-r` or `-s`) exits silently in ~0.1 s
+**without running the script and without forwarding it**. The runner therefore
+has two working modes and picks one automatically:
+
+| Situation | Mode | Behaviour |
+|---|---|---|
+| No AE running | **offline** | Starts a hidden AE engine, runs the script (~8 s cold start), exits. The script sees an empty project — operate on project *files* (`app.open()`), not on a live session. |
+| AE running **and** `ae-listener.jsx` loaded inside it | **listener** | Sends the script to the running AE. The script sees the user's open project, active comp and selection — like macOS. |
+| AE running, no listener | **blocked** | Exit code 3 with instructions. Nothing runs. |
+
+To enable **listener** mode, load `scripts/ae-listener.jsx` inside After Effects
+once per session (File > Scripts > Run Script File...). For a permanent setup,
+copy it to `%APPDATA%\Adobe\After Effects\<version>\Scripts\Startup\`.
+
+Check which mode is available before promising a live-session operation:
+
+```
+ae-run.cmd scripts\active-state.jsx
+```
+- exit 0 → ran (offline or listener; the log line records which)
+- exit 3 → blocked; tell the user to load the listener or close AE
+
+**Windows: pass script arguments with `-ArgsFile`, not as a positional JSON string.** cmd.exe strips the double quotes inside JSON. Write the JSON with your file tool first:
+
+```
+Write  ->  %TEMP%\ae-args.json   (content: {"mode":"folder","folderName":"Images"})
+run    ->  ae-run.cmd --background scripts\project-overview.jsx -ArgsFile %TEMP%\ae-args.json
+```
+
+On macOS the original positional form still works: `bash "$SKILL_SCRIPTS/runner.sh" --background scripts/project-overview.jsx '{"mode":"folder"}'`.
+
+**The `bash scripts/runner.sh ...` examples below are macOS form.** On Windows,
+run the same script through `runner.ps1` (or `ae-run.cmd`) instead, moving any
+JSON arguments into an `-ArgsFile`. All scripts, args and result files are
+identical across platforms.
 
 ## First-Time Setup
 
-1. Run `scripts/runner.sh` with any query script to detect the AE version
-2. If multiple AE versions are installed, the user must choose one — runner.sh will prompt
-3. Ensure AE Preferences > Scripting & Expressions > "Allow Scripts to Write Files and Access Network" is enabled
+1. Run the runner with any query script to detect the AE version:
+   - macOS: `bash scripts/runner.sh --background scripts/active-state.jsx`
+   - Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\runner.ps1 -Background scripts\active-state.jsx`
+2. If multiple AE versions are installed, the user must choose one — the runner will prompt (exit code 2) and print the exact command that caches the choice.
+   - Windows caches the choice in `%USERPROFILE%\.ae-assistant-config` (a `Set-Content` command is printed).
+   - macOS caches it in `~/.ae-assistant-config`.
+3. Ensure AE Preferences > Scripting & Expressions > "Allow Scripts to Write Files and Access Network" is enabled.
+4. Windows only: to use the running AE session (rather than a hidden engine),
+   load `scripts/ae-listener.jsx` inside After Effects.
 
 ## Workflow
 
@@ -106,16 +163,26 @@ Read the relevant rule file from `rules/`. Always read `rules/extendscript-funda
 
 Before writing or executing any action script, resolve the skill's real (non-symlinked) path. ExtendScript `#include` cannot follow symlinks, so you MUST use the real filesystem path.
 
-Run this once at the start of each session:
+Run this once at the start of each session.
+
+macOS:
 ```bash
 SKILL_SCRIPTS="$(readlink -f ~/.claude/skills/after-effects-assistant/scripts 2>/dev/null || readlink ~/.claude/skills/after-effects-assistant/scripts)"
 echo "$SKILL_SCRIPTS"
 ```
 
-Use the resolved path (`$SKILL_SCRIPTS`) for all subsequent Write and Bash commands in this session.
+Windows (PowerShell):
+```powershell
+$p = "$env:USERPROFILE\.claude\skills\after-effects-assistant\scripts"
+$SKILL_SCRIPTS = (Get-Item -LiteralPath $p -Force).Target
+if (-not $SKILL_SCRIPTS) { $SKILL_SCRIPTS = (Resolve-Path -LiteralPath $p).Path }
+$SKILL_SCRIPTS
+```
+
+Use the resolved path (`$SKILL_SCRIPTS`) for all subsequent Write and runner commands in this session.
 
 **Why this matters:**
-- `~/.claude/skills/` is typically a symlink — ExtendScript `#include` fails through symlinks
+- `~/.claude/skills/` is typically a symlink (or a junction on Windows) — ExtendScript `#include` fails through them
 - Writing to the real `scripts/` directory lets `#include "lib/json2.jsx"` resolve correctly
 - The resolved path changes per machine, so never hardcode it
 
@@ -148,9 +215,9 @@ Every generated script MUST follow this template:
 
 | Function | Purpose |
 |----------|---------|
-| `writeResult(obj)` | Write JSON result to `/tmp/ae-assistant-result.json` |
+| `writeResult(obj)` | Write JSON result to the system temp dir (`%TEMP%` on Windows, `/tmp` on macOS — see `AE_TMP_DIR` in `lib/utils.jsx`) |
 | `writeError(msg, detail)` | Last-resort error capture when JSON.stringify fails |
-| `readArgs()` | Read args from `/tmp/ae-assistant-args.json` |
+| `readArgs()` | Read args from `ae-assistant-args.json` in the same temp dir |
 | `getLayerType(layer)` | Returns type string: "shape", "text", "null", "precomp", etc. |
 | `getBlendModeName(mode)` | BlendingMode enum → string name |
 | `getActiveComp()` | Returns active comp or writes error and returns null |
@@ -162,15 +229,20 @@ Every generated script MUST follow this template:
 | `framesToSeconds(frames, comp)` | Frame count → seconds via `comp.frameDuration` |
 | `appendLog(message)` | Append to `~/.ae-assistant-extendscript.log` |
 
-**Write the script using the Write tool, then execute with a short bash command:**
+**Write the script using the Write tool, then execute with a short runner command:**
 
 1. Use the **Write** tool to write the script to `$SKILL_SCRIPTS/ae-action.jsx` (the resolved real path)
-2. Execute it with bash:
+2. Execute it:
 ```bash
+# macOS
 bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/ae-action.jsx"
 ```
+```powershell
+# Windows
+powershell -NoProfile -ExecutionPolicy Bypass -File "$SKILL_SCRIPTS\runner.ps1" "$SKILL_SCRIPTS\ae-action.jsx"
+```
 
-**IMPORTANT:** Do NOT use `cat > file << 'SCRIPT'` heredocs — they put the entire script in the bash command, cluttering the permission prompt. Always use the Write tool for the script content, then a short bash command to run it.
+**IMPORTANT:** Do NOT inline the script through a shell heredoc (`cat > file << 'SCRIPT'` on macOS, multiple `echo >>` lines on Windows) — that puts the entire script in the command line, cluttering the permission prompt. Always use the Write tool for the script content, then a short runner command to run it.
 
 ### Step 5: Execute or confirm
 
@@ -190,6 +262,14 @@ bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/ae-action.jsx"
 ### Built-in action scripts
 
 Before generating a custom `ae-action.jsx`, check if a built-in script already handles the task. These are permanent, tested scripts with args-based behavior:
+
+**Running these on Windows:** the examples below are written in macOS form (positional JSON args). On Windows, write the same JSON object to a file and pass it with `-ArgsFile` — cmd.exe strips the double quotes out of a positional JSON string:
+
+```powershell
+# Write {"compName": "Main Comp", "suffix": " COPY"} to %TEMP%\ae-args.json first,
+# then:
+powershell -NoProfile -ExecutionPolicy Bypass -File "$SKILL_SCRIPTS\runner.ps1" -ArgsFile "$env:TEMP\ae-args.json" "$SKILL_SCRIPTS\true-comp-duplicator.jsx"
+```
 
 **True Comp Duplicator** — deep-clone a comp with independent sub-comps (confirm before running):
 ```bash
@@ -389,19 +469,27 @@ bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/split-layer.jsx" '{"time": 2.5}'
 ### Step 6: Execute and read result
 
 ```bash
-# Execute the action script (already written to $SKILL_SCRIPTS/ae-action.jsx in Step 4)
+# macOS — execute the action script (already written to $SKILL_SCRIPTS/ae-action.jsx in Step 4)
 bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/ae-action.jsx" '{"arg1": "value1"}'
 ```
+```powershell
+# Windows — args go through a JSON file (see Platform dispatch)
+powershell -NoProfile -ExecutionPolicy Bypass -File "$SKILL_SCRIPTS\runner.ps1" -ArgsFile "$env:TEMP\ae-args.json" "$SKILL_SCRIPTS\ae-action.jsx"
+```
 
-Read `/tmp/ae-assistant-result.json` for the result.
+The runner prints the result JSON to stdout, and also leaves it in the system temp dir (`%TEMP%\ae-assistant-result.json` on Windows, `/tmp/ae-assistant-result.json` on macOS).
 
 ### Debugging failures
 
 If a script fails, check these in order:
-1. **`~/.ae-assistant-log`** — runner.sh logs every execution, args, results, and errors here
-2. **`/tmp/ae-assistant-error.txt`** — JXA-level errors (AE not responding, DoScriptFile failure)
-3. **`~/.ae-assistant-extendscript.log`** — ExtendScript-level logs from `appendLog()` in utils.jsx
-4. **AE Preferences** — Ensure "Allow Scripts to Write Files and Access Network" is enabled
+1. **Exit code 3 on Windows** — AE is running but no listener is loaded. Nothing
+   was executed. Either load `scripts/ae-listener.jsx` inside AE
+   (File > Scripts > Run Script File...) or close AE to use the offline engine.
+2. **`~/.ae-assistant-log`** — the runner logs every execution, mode, args, results and errors here (both platforms)
+3. **Runner error file** — `/tmp/ae-assistant-error.txt` (macOS, JXA-level errors) or `%TEMP%\ae-assistant-error.txt` (Windows, script-level errors)
+4. **Runner output** — `%TEMP%\ae-assistant-runner-out.txt` / `-err.txt` on Windows: raw AfterFX.exe stdout/stderr
+5. **`~/.ae-assistant-extendscript.log`** — ExtendScript-level logs from `appendLog()` in utils.jsx
+6. **AE Preferences** — Ensure "Allow Scripts to Write Files and Access Network" is enabled
 
 When an error occurs, read `~/.ae-assistant-log` to understand what happened, fix the script, and retry.
 
@@ -410,22 +498,22 @@ When an error occurs, read `~/.ae-assistant-log` to understand what happened, fi
 - ALWAYS wrap mutations in `app.beginUndoGroup()` / `app.endUndoGroup()`
 - ALWAYS use matchNames for property access, not display names (display names are localized)
 - ALWAYS use 1-based indexing for layers and project items
-- ALWAYS write action scripts to `$SKILL_SCRIPTS/ae-action.jsx` (the resolved real path, NOT `/tmp/`)
+- ALWAYS write action scripts to `$SKILL_SCRIPTS/ae-action.jsx` (the resolved real path, NOT a temp directory)
 - ALWAYS use relative `#include "lib/json2.jsx"` and `#include "lib/utils.jsx"` (NOT absolute paths)
 - ALWAYS wrap in an IIFE to avoid global scope pollution
 - ALWAYS use `var`, never `let` or `const` (ES3)
-- ALWAYS write results to /tmp/ae-assistant-result.json via writeResult()
+- ALWAYS write results with `writeResult()` — it resolves the platform temp dir for you
 - ALWAYS use `getActiveComp()` to get the active comp (handles the null/CompItem check and writes error)
-- ALWAYS use `--background` flag for query scripts to avoid focus-steal
+- ALWAYS use the non-interactive flag for query scripts to avoid focus-steal (`--background` on macOS, `-Background` on Windows)
 
 ## FORBIDDEN
 
 - NEVER use ES5+ syntax: let, const, arrow functions, template literals, destructuring
 - NEVER use Array.map, Array.filter, Array.reduce, Array.forEach (not in ES3)
 - NEVER use JSON.parse or JSON.stringify without including json2.jsx
-- NEVER write action scripts to `/tmp/` — ExtendScript `#include` can't resolve paths from there
-- NEVER use absolute paths in `#include` — they break through symlinks
+- NEVER write action scripts to a temp directory — ExtendScript `#include` can't resolve `lib/` from there
+- NEVER use absolute paths in `#include` — they break through symlinks/junctions
 - NEVER hardcode layer indices — use names, selection, or iteration
 - NEVER run destructive operations without user confirmation
 - NEVER assume a comp is active without checking
-- NEVER use `cat > file << 'SCRIPT'` heredocs to write scripts — use the Write tool instead, then execute with a short bash command
+- NEVER inline scripts through a shell heredoc (`cat > file << 'SCRIPT'` on macOS, chained `echo >>` on Windows) — use the Write tool instead, then a short runner command

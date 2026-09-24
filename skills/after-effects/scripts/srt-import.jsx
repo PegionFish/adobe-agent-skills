@@ -7,7 +7,7 @@
 //   "position": "bottom",       — "bottom", "center", "top" (optional)
 //   "compName": "Main Comp"     — target comp (optional, uses active)
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

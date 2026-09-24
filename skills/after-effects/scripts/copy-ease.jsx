@@ -7,7 +7,7 @@
 // }
 // If no source args: copies ease from first selected property's last keyframe.
 // Applies to all other selected keyframes.
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

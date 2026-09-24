@@ -2,7 +2,7 @@
 // Args: { "compName": "Main Comp", "suffix": " COPY" }
 //   compName: optional, uses active comp if omitted
 //   suffix: optional, defaults to " COPY"
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

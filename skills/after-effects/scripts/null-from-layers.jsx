@@ -4,7 +4,7 @@
 //   "prefix": "Ctrl",             — custom prefix when naming is "custom"
 //   "position": "layer-center"    — "layer-center", "layer-anchor", "comp-center"
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

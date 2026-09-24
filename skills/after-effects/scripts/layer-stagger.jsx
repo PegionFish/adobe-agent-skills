@@ -5,7 +5,7 @@
 //   "direction": "forward",  — "forward" (top to bottom) or "reverse"
 //   "mode": "inPoint"        — "inPoint" (shift in-point), "startTime" (shift start), "keyframes" (shift keys)
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

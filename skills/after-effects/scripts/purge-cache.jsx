@@ -6,7 +6,7 @@
 //   "snapshots": true,      — purge snapshot caches (default true)
 //   "dryRun": false         — preview disk cache size without deleting
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"
@@ -115,6 +115,10 @@ function handleDiskCache(dryRun) {
             defaultPaths.push("~/Library/Application Support/Adobe/Common/Media Cache Files/");
             defaultPaths.push("~/Library/Application Support/Adobe/Common/Media Cache/");
         } else {
+            // Windows: media cache defaults live under %APPDATA% (Roaming).
+            // %LOCALAPPDATA% is kept as a fallback for custom/legacy setups.
+            defaultPaths.push("~/AppData/Roaming/Adobe/Common/Media Cache Files/");
+            defaultPaths.push("~/AppData/Roaming/Adobe/Common/Media Cache/");
             defaultPaths.push("~/AppData/Local/Adobe/Common/Media Cache Files/");
             defaultPaths.push("~/AppData/Local/Adobe/Common/Media Cache/");
         }

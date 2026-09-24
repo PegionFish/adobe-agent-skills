@@ -2,7 +2,7 @@
 // Args: {
 //   "time": null    — split time in seconds (default: comp.time / CTI)
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

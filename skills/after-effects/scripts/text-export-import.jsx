@@ -1,10 +1,10 @@
 // text-export-import.jsx — Export/import all text content to/from CSV
 // Args: {
 //   "mode": "export",                  — "export" or "import"
-//   "csvPath": "/tmp/project-text.csv" — file path for CSV
+//   "csvPath": "C:\\path\\to\\text.csv" — file path for CSV (defaults to the temp dir)
 // }
 // CSV format: comp_name, layer_name, layer_index, text_content
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json in the system temp dir
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"
@@ -14,7 +14,7 @@
     try {
         var args = readArgs();
         var mode = args.mode || "export";
-        var csvPath = args.csvPath || "/tmp/ae-project-text.csv";
+        var csvPath = args.csvPath || (AE_TMP_DIR + "/ae-project-text.csv");
 
         if (mode === "export") {
             doExport(csvPath);

@@ -1,7 +1,7 @@
 // project-audit.jsx — Comprehensive project health check
 // Args: { "checks": ["unused", "missing", "expressions", "duplicates", "fonts", "empty"] }
 //   Default: all checks enabled
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

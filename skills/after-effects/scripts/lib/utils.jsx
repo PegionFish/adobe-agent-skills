@@ -1,10 +1,18 @@
 // utils.jsx — Shared helpers for AE Assistant query scripts
 // All query scripts #include this file
 
+// --- Shared IPC paths (cross-platform) -----------------------------------
+// The runner and these helpers must agree on one per-user temp directory:
+//   Windows: Folder.temp == %TEMP% == [IO.Path]::GetTempPath() in runner.ps1
+//   macOS:   /tmp == used by runner.sh (unchanged, zero-regression)
+var AE_TMP_DIR = /\bWindows\b/i.test(String($.os)) ? Folder.temp.fsName : "/tmp";
+var AE_RESULT_FILE = AE_TMP_DIR + "/ae-assistant-result.json";
+var AE_ARGS_FILE = AE_TMP_DIR + "/ae-assistant-args.json";
+
 // Write JSON result to temp output file
 function writeResult(obj) {
     var jsonStr = JSON.stringify(obj);
-    var outFile = new File("/tmp/ae-assistant-result.json");
+    var outFile = new File(AE_RESULT_FILE);
     outFile.encoding = "UTF-8";
     outFile.open("w");
     outFile.write(jsonStr);
@@ -18,25 +26,35 @@ function writeError(message, detail) {
         errStr += ',"detail":"' + String(detail).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
     }
     errStr += '}';
-    var outFile = new File("/tmp/ae-assistant-result.json");
+    var outFile = new File(AE_RESULT_FILE);
     outFile.encoding = "UTF-8";
     outFile.open("w");
     outFile.write(errStr);
     outFile.close();
 }
 
-// Append to persistent log file
+// Append to persistent log file (never throws — logging must not break a run)
 function appendLog(message) {
-    var logFile = new File("~/.ae-assistant-extendscript.log");
-    logFile.encoding = "UTF-8";
-    logFile.open("a");
-    logFile.writeln("[" + new Date().toString() + "] " + message);
-    logFile.close();
+    try {
+        var logFile = new File("~/.ae-assistant-extendscript.log");
+        logFile.encoding = "UTF-8";
+        logFile.open("a");
+        logFile.writeln("[" + new Date().toString() + "] " + message);
+        logFile.close();
+    } catch (e) {
+        try {
+            var fallback = new File(AE_TMP_DIR + "/ae-assistant-extendscript.log");
+            fallback.encoding = "UTF-8";
+            fallback.open("a");
+            fallback.writeln("[" + new Date().toString() + "] " + message);
+            fallback.close();
+        } catch (e2) {}
+    }
 }
 
 // Read arguments from temp input file
 function readArgs() {
-    var argFile = new File("/tmp/ae-assistant-args.json");
+    var argFile = new File(AE_ARGS_FILE);
     if (!argFile.exists) return {};
     argFile.encoding = "UTF-8";
     argFile.open("r");

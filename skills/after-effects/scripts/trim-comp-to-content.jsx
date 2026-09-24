@@ -3,7 +3,7 @@
 //   "padding": 0,         — seconds of padding added to both ends (default 0)
 //   "recursive": false     — also trim nested precomps (default false)
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

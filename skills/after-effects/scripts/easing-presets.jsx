@@ -6,7 +6,7 @@
 // }
 // Presets: "smooth", "smooth-in", "smooth-out", "sharp", "sharp-in", "sharp-out",
 //          "bounce", "elastic", "overshoot", "linear"
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

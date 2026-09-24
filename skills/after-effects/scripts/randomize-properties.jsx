@@ -7,7 +7,7 @@
 // }
 // For position: min/max apply to both X and Y. Use minX/maxX/minY/maxY for independent axes.
 // For scale: applies uniformly unless "uniform": false
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

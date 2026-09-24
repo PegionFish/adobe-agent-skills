@@ -17,7 +17,7 @@ npx skills add aedev-tools/adobe-agent-skills
 - **Reads your project** — understands your comps, layers, properties, keyframes, and expressions
 - **Generates and runs ExtendScript** — you describe what you want, it writes and executes the code
 - **Covers the full AE workflow** — layers, keyframes, expressions, effects, compositions, assets, and rendering
-- **Always undoable** — every action wraps in an undo group, Cmd+Z always works
+- **Always undoable** — every action wraps in an undo group, Cmd+Z (Ctrl+Z on Windows) always works
 
 ## Example prompts
 
@@ -59,10 +59,12 @@ npx skills add aedev-tools/adobe-agent-skills
 
 3. **Start prompting.** Open your AE project, open your coding agent, and describe what you want.
 
+The skill picks the right runner automatically: `scripts/runner.sh` (bash + osascript/JXA) on macOS, `scripts/runner.ps1` (PowerShell + `AfterFX.exe -r`) on Windows. PowerShell 5.1 or later is required on Windows.
+
 ## Requirements
 
 - Adobe After Effects (any recent version)
-- macOS (Windows support coming soon)
+- macOS, or Windows 10/11 with PowerShell 5.1+
 - A coding agent that supports [Agent Skills](https://agentskills.io) (Claude Code, Cursor, etc.)
 
 ## What's inside

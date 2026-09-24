@@ -1,6 +1,6 @@
 // font-inventory.jsx — List all fonts used across the project
 // Args: {} (scans entire project) or { "compName": "Main Comp" }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

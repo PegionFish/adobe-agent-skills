@@ -4,7 +4,7 @@
 //   "recursive": true,    — search subdirectories (default true)
 //   "dryRun": true        — preview without making changes
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

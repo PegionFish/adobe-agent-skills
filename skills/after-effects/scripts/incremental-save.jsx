@@ -3,7 +3,7 @@
 //   "comment": "before client revisions"  — optional comment appended to filename
 // }
 // Saves as: ProjectName_v001.aep, ProjectName_v002.aep, etc.
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

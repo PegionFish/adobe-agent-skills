@@ -4,7 +4,7 @@
 //   replace: PostScript name of replacement font (e.g., "Inter-Bold")
 //   scope: "project" (default) or "comp" (uses active comp)
 //   dryRun: true to preview without making changes
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

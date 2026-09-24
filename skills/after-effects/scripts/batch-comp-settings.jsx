@@ -8,7 +8,7 @@
 //   "duration": 10,                      — new duration in seconds (optional)
 //   "bgColor": [0, 0, 0]                — new background color RGB 0-1 (optional)
 // }
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

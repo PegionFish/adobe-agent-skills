@@ -2,7 +2,7 @@
 // Default: summary mode — shows folder tree with item counts, lists comps, summarizes footage
 // Args: { "mode": "full" } for the old full listing (use sparingly on large projects)
 //       { "mode": "folder", "folderName": "Images" } to list contents of a specific folder
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"

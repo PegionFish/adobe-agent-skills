@@ -1,6 +1,6 @@
 // comp-detail.jsx — Medium detail for a specific composition
 // Args: { "compName": "Main Comp" } or uses active comp if no args
-// Output: /tmp/ae-assistant-result.json
+// Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
 #include "lib/utils.jsx"
