@@ -13,7 +13,9 @@
 //   %APPDATA%\Adobe\After Effects\<version>\Scripts\Startup\
 //
 // Protocol (all paths live in the shared temp dir == Folder.temp):
-//   command.json    runner -> AE   {"nonce":"...","script":"C:/path/action.jsx"}
+//   command.json    runner -> AE   two plain lines: "<nonce>\n<script path>"
+//                                  (deliberately not JSON, and never eval'd —
+//                                  the temp dir is writable by any local process)
 //   result.json     AE -> runner   whatever the script wrote via writeResult(),
 //                                  plus an injected "_nonce" field
 //   listener.json   heartbeat      written every ~2s while the listener is alive
@@ -61,6 +63,16 @@ function aeListenerWriteError(message, nonce) {
     } catch (e) {}
 }
 
+// Windows paths never contain newlines; only strip a stray CR left by a
+// CRLF-written command file. Do NOT trim other whitespace — it can be part
+// of a legitimate path.
+function aeListenerStripCR(s) {
+    if (s && s.length > 0 && s.charAt(s.length - 1) === "\r") {
+        return s.substring(0, s.length - 1);
+    }
+    return s;
+}
+
 // Inject the nonce into whatever the script wrote, so the runner can verify the
 // result belongs to its own request.
 function aeListenerStampResult(nonce) {
@@ -95,16 +107,20 @@ function aeListenerTick() {
     if (!cmdFile.exists) { return; }
 
     // Read and consume the command first so a slow script can never be
-    // picked up twice.
-    var payload = null;
+    // picked up twice. Payload: "<nonce>\n<script path>" (see the protocol
+    // note at the top). Parsing is a plain line split — no eval on temp-dir
+    // content.
     var nonce = "";
+    var scriptPath = "";
     try {
         cmdFile.encoding = "UTF-8";
         cmdFile.open("r");
         var txt = cmdFile.read();
         cmdFile.close();
-        payload = eval("(" + txt + ")");
-        nonce = payload && payload.nonce ? payload.nonce : "";
+        var split = txt.indexOf("\n");
+        if (split === -1) { throw new Error("command file has no script line"); }
+        nonce = aeListenerStripCR(txt.substring(0, split));
+        scriptPath = aeListenerStripCR(txt.substring(split + 1));
     } catch (eParse) {
         aeListenerWriteError("could not parse command file: " + eParse.toString(), "");
         try { cmdFile.remove(); } catch (eRm) {}
@@ -112,12 +128,12 @@ function aeListenerTick() {
     }
     try { cmdFile.remove(); } catch (eRm2) {}
 
-    if (!payload || !payload.script) { return; }
+    if (!scriptPath) { return; }
 
     // The invoked script is responsible for writing result.json via
     // writeResult()/writeError() from lib/utils.jsx.
     try {
-        $.evalFile(new File(payload.script));
+        $.evalFile(new File(scriptPath));
     } catch (eRun) {
         aeListenerWriteError(eRun.toString(), nonce);
         return;

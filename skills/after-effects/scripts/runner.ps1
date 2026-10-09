@@ -283,7 +283,10 @@ if ($effectiveMode -eq "listener") {
     }
     $nonce = [guid]::NewGuid().ToString()
     $scriptForward = $ScriptPath.Replace('\', '/')
-    $cmdPayload = @{ nonce = $nonce; script = $scriptForward; createdAt = (Get-Date).ToString("o") } | ConvertTo-Json -Compress
+    # Two plain lines: "<nonce>`n<script path>". ae-listener.jsx parses this
+    # with a line split instead of eval() — the command file lives in the
+    # shared temp dir, writable by any local process.
+    $cmdPayload = $nonce + "`n" + $scriptForward
     $tmpCmd = "$CMD_FILE.tmp"
     [System.IO.File]::WriteAllText($tmpCmd, $cmdPayload, (New-Object System.Text.UTF8Encoding($false)))
     Move-Item -LiteralPath $tmpCmd -Destination $CMD_FILE -Force

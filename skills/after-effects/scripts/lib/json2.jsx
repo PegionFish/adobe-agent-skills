@@ -3,6 +3,12 @@
 //  Public Domain.
 //  NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
 
+//  LOCAL MODIFICATION (adobe-agent-skills): JSON.parse below is NOT the
+//  upstream eval()-behind-regex-sanitiser implementation. It is a
+//  recursive-descent parser, because parse() here consumes files written to
+//  the shared temp directory that any local process can overwrite; eval() on
+//  that content is an injection surface. stringify is untouched.
+
 //  USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
 //  NOT CONTROL.
 
@@ -470,61 +476,160 @@ if (typeof JSON !== "object") {
             }
 
 
-// Parsing happens in four stages. In the first stage, we replace certain
-// Unicode characters with escape sequences. JavaScript handles many characters
-// incorrectly, either silently deleting them, or treating them as line endings.
+// Parsing is a hand-written recursive-descent parser (see the local
+// modification note at the top of this file). It accepts exactly the JSON
+// grammar — objects, arrays, strings with all escapes, numbers, true/false/
+// null — and throws a SyntaxError on anything else, including trailing
+// garbage. Nothing is ever passed to eval().
 
-            text = String(text);
-            rx_dangerous.lastIndex = 0;
-            if (rx_dangerous.test(text)) {
-                text = text.replace(rx_dangerous, function (a) {
-                    return (
-                        "\\u"
-                        + ("0000" + a.charCodeAt(0).toString(16)).slice(-4)
-                    );
-                });
+            var at;     // index of the current character
+            var ch;     // the current character
+
+            function error(m) {
+                throw new SyntaxError("JSON.parse: " + m + " (position " + at + ")");
             }
 
-// In the second stage, we run the text against regular expressions that look
-// for non-JSON patterns. We are especially concerned with "()" and "new"
-// because they can cause invocation, and "=" because it can cause mutation.
-// But just to be safe, we want to reject all unexpected forms.
+            function next() {
+                at += 1;
+                ch = text.charAt(at);
+                return ch;
+            }
 
-// We split the second stage into 4 regexp operations in order to work around
-// crippling inefficiencies in IE's and Safari's regexp engines. First we
-// replace the JSON backslash pairs with "@" (a non-JSON character). Second, we
-// replace all simple value tokens with "]" characters. Third, we delete all
-// open brackets that follow a colon or comma or that begin the text. Finally,
-// we look to see that the remaining characters are only whitespace or "]" or
-// "," or ":" or "{" or "}". If that is so, then the text is safe for eval.
+            function match(s) {
+                if (text.substr(at, s.length) === s) {
+                    for (var k = 0; k < s.length; k++) { next(); }
+                    return true;
+                }
+                return false;
+            }
 
-            if (
-                rx_one.test(
-                    text
-                        .replace(rx_two, "@")
-                        .replace(rx_three, "]")
-                        .replace(rx_four, "")
-                )
-            ) {
+            function skipWs() {
+                while (ch && " \t\r\n".indexOf(ch) !== -1) { next(); }
+            }
 
-// In the third stage we use the eval function to compile the text into a
-// JavaScript structure. The "{" operator is subject to a syntactic ambiguity
-// in JavaScript: it can begin a block or an object literal. We wrap the text
-// in parens to eliminate the ambiguity.
+            function parseValue() {
+                skipWs();
+                if (!ch) { error("unexpected end of input"); }
+                if (ch === "{") { return parseObject(); }
+                if (ch === "[") { return parseArray(); }
+                if (ch === "\"") { return parseString(); }
+                if (ch === "-" || (ch >= "0" && ch <= "9")) { return parseNumber(); }
+                if (ch === "t") { return parseWord("true", true); }
+                if (ch === "f") { return parseWord("false", false); }
+                if (ch === "n") { return parseWord("null", null); }
+                error("unexpected character '" + ch + "'");
+            }
 
-                j = eval("(" + text + ")");
+            function parseWord(word, val) {
+                if (!match(word)) { error("expected '" + word + "'"); }
+                return val;
+            }
+
+            function parseNumber() {
+                var s = "";
+                if (ch === "-") { s = ch; next(); }
+                while (ch && ch >= "0" && ch <= "9") { s += ch; next(); }
+                if (ch === ".") {
+                    s += ch; next();
+                    while (ch && ch >= "0" && ch <= "9") { s += ch; next(); }
+                }
+                if (ch === "e" || ch === "E") {
+                    s += ch; next();
+                    if (ch === "+" || ch === "-") { s += ch; next(); }
+                    while (ch && ch >= "0" && ch <= "9") { s += ch; next(); }
+                }
+                var n = Number(s);
+                if (s === "" || isNaN(n)) { error("bad number '" + s + "'"); }
+                return n;
+            }
+
+            function parseString() {
+                var s = "";
+                if (ch !== "\"") { error("expected string"); }
+                next();
+                while (ch && ch !== "\"") {
+                    if (ch === "\\") {
+                        next();
+                        if (ch === "u") {
+                            var hex = "";
+                            for (var h = 0; h < 4; h++) {
+                                next();
+                                var hc = ch.toLowerCase();
+                                if (!((hc >= "0" && hc <= "9") || (hc >= "a" && hc <= "f"))) {
+                                    error("bad \\u escape");
+                                }
+                                hex += ch;
+                            }
+                            s += String.fromCharCode(parseInt(hex, 16));
+                        } else if (ch === "\"") { s += "\""; }
+                        else if (ch === "\\") { s += "\\"; }
+                        else if (ch === "/") { s += "/"; }
+                        else if (ch === "b") { s += "\b"; }
+                        else if (ch === "f") { s += "\f"; }
+                        else if (ch === "n") { s += "\n"; }
+                        else if (ch === "r") { s += "\r"; }
+                        else if (ch === "t") { s += "\t"; }
+                        else { error("bad escape '\\" + ch + "'"); }
+                        next();
+                    } else {
+                        s += ch;
+                        next();
+                    }
+                }
+                if (ch !== "\"") { error("unterminated string"); }
+                next();
+                return s;
+            }
+
+            function parseObject() {
+                var o = {};
+                next();                 // consume "{"
+                skipWs();
+                if (ch === "}") { next(); return o; }
+                while (ch) {
+                    skipWs();
+                    if (ch !== "\"") { error("expected object key"); }
+                    var key = parseString();
+                    skipWs();
+                    if (ch !== ":") { error("expected ':'"); }
+                    next();
+                    o[key] = parseValue();
+                    skipWs();
+                    if (ch === ",") { next(); continue; }
+                    if (ch === "}") { next(); return o; }
+                    error("expected ',' or '}'");
+                }
+                error("unterminated object");
+            }
+
+            function parseArray() {
+                var a = [];
+                next();                 // consume "["
+                skipWs();
+                if (ch === "]") { next(); return a; }
+                while (ch) {
+                    a.push(parseValue());
+                    skipWs();
+                    if (ch === ",") { next(); continue; }
+                    if (ch === "]") { next(); return a; }
+                    error("expected ',' or ']'");
+                }
+                error("unterminated array");
+            }
+
+            text = String(text);
+            at = 0;
+            ch = text.charAt(0);
+            j = parseValue();
+            skipWs();
+            if (ch) { error("unexpected trailing characters"); }
 
 // In the optional fourth stage, we recursively walk the new structure, passing
 // each name/value pair to a reviver function for possible transformation.
 
-                return (typeof reviver === "function")
-                    ? walk({"": j}, "")
-                    : j;
-            }
-
-// If the text is not JSON parseable, then a SyntaxError is thrown.
-
-            throw new SyntaxError("JSON.parse");
+            return (typeof reviver === "function")
+                ? walk({"": j}, "")
+                : j;
         };
     }
 }());
