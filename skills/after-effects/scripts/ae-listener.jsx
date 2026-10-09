@@ -165,7 +165,20 @@ function aeListenerStart() {
     app.scheduleTask("aeListenerTick()", 500, true);
     $.writeln("ae-listener.jsx active - heartbeat: " + AE_L_HEARTBEAT);
     if (aeListenerShouldAnnounce()) {
-        alert("AE Assistant listener is active.\n\nScripts can now be sent to this After Effects instance.\n(Heartbeat: " + AE_L_HEARTBEAT + ")");
+        // Chinese text is \uXXXX-escaped: ExtendScript reads BOM-less
+        // scripts with the system codepage, so raw UTF-8 would be garbled.
+        var msg;
+        try {
+            if (String($.locale).indexOf("zh") === 0) {
+                msg = "AE Assistant \u76d1\u542c\u5668\u5df2\u542f\u7528\u3002\n\n"
+                    + "\u73b0\u5728\u53ef\u4ee5\u5411\u8fd9\u4e2a After Effects \u5b9e\u4f8b\u53d1\u9001\u811a\u672c\u3002\n"
+                    + "(\u5fc3\u8df3\u6587\u4ef6: " + AE_L_HEARTBEAT + ")";
+            }
+        } catch (eLoc) {}
+        if (!msg) {
+            msg = "AE Assistant listener is active.\n\nScripts can now be sent to this After Effects instance.\n(Heartbeat: " + AE_L_HEARTBEAT + ")";
+        }
+        alert(msg);
     }
 }
 

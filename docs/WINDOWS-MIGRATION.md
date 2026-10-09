@@ -108,7 +108,7 @@ Shared files (all in `%TEMP%`, agreed with `lib/utils.jsx`):
 | `ae-assistant-args.json` | runner → AE | script arguments |
 | `ae-assistant-result.json` | AE → runner | `writeResult()` output (+ `_nonce` in listener mode) |
 | `ae-assistant-error.txt` | AE → runner | script-level failure |
-| `ae-assistant-commands/command.json` | runner → listener | `{"nonce","script"}` |
+| `ae-assistant-commands/command.json` | runner → listener | two plain lines: `<nonce>` `\n` `<script path>` (never eval'd) |
 | `ae-assistant-listener.json` | listener → runner | heartbeat, refreshed every ~2 s |
 | `ae-assistant-runner-out.txt` / `-err.txt` | AE → runner | raw engine stdout/stderr (offline mode) |
 
@@ -152,16 +152,20 @@ Everything below was executed on this machine unless marked otherwise.
 
 | Check | Status |
 |---|---|
-| Runner logic: args round-trip, payload format, 4 error paths — `scripts\tests\smoke.ps1` (12 checks) | ✅ verified |
+| Runner logic: args round-trip, payload format, 4 error paths — `scripts\tests\smoke.ps1` (17 checks, incl. a byte-level Chinese stdout round-trip) | ✅ verified |
 | AE detection (Program Files scan, caching, multi-version prompt) | ✅ verified against AE 26.2 |
 | Offline mode: `-s "$.evalFile(...)"` executes a real skill script incl. `#include` chain | ✅ verified (~8 s, returned `aeVersion 26.2.1x2`) |
 | `Folder.temp` == `%TEMP%` across AE and runner | ✅ verified |
 | Listener mode end-to-end against a live AE session | ✅ verified (0.66 s round-trip, nonce-matched) |
 | Listener mode argument plumbing (`-ArgsFile` → `readArgs()` → live project query) | ✅ verified |
 | `-ArgsFile` with escaped quotes / non-ASCII payloads | ✅ verified |
+| json2 recursive-descent parser on the real engine — `scripts\tests\ae-json-test.jsx` (10 checks) | ✅ verified |
+| `readTextSmart` UTF-8/BOM/GBK + multi-line CSV on zh_CN AE — `scripts\tests\ae-encoding-test.jsx` (16 checks) | ✅ verified |
+| Chinese result content byte-exact on runner stdout (real AE) | ✅ verified |
 | macOS runner untouched (`runner.sh` unchanged) | ✅ (no diff) |
 | Offline mode against a saved project file | ⚠️ not run — a fresh engine has an empty project; scripts must call `app.open()` for file-based work |
 | Exit code 2 (two AE versions installed) | ⚠️ not reachable on this machine (single install) |
+| Offline `-s` payload when the skill path itself contains non-ASCII characters | ⚠️ not run — listener mode is unaffected (paths travel inside UTF-8 files) |
 
 Run the smoke test any time after changing the runner:
 
@@ -182,3 +186,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tests\smoke.ps1
 - **Listener lifetime.** `app.scheduleTask` callbacks live in the AE session;
   loading the listener again after an AE restart is required (or install it into
   `Scripts\Startup\`).
+
+## 7. Locale adaptation (Chinese AE on any Windows)
+
+Measured on **zh_CN AE 26.2.1x2 running on an en-US Windows** (OEM codepage
+437) — the common "Chinese AE + English Windows" mix. Four rules now cover
+the whole pipeline:
+
+1. **One UTF-8 data path.** All IPC files were already UTF-8 on both sides;
+   the runner now also forces `[Console]::OutputEncoding = UTF-8` so the
+   result JSON survives stdout byte-for-byte. Without it, CP437 turned every
+   Chinese character into `?` (and CP936 systems would emit GBK bytes that
+   UTF-8 consumers read as mojibake), breaking name-targeted follow-up calls.
+2. **Generated code files stay pure ASCII.** ExtendScript (and PowerShell
+   5.1) parse BOM-less files with the system codepage, so raw UTF-8 Chinese
+   in a generated `.jsx` is garbled on load. `SKILL.md` mandates `\uXXXX`
+   escapes; Chinese *data* is safe inside the `-ArgsFile` JSON.
+3. **Locale-dependent strings are never hardcoded.** Render/output template
+   names are localized (`无损`, `使用 Alpha 无损耗`, `最佳设置` — some with
+   trailing spaces); `render-queue-batch.jsx` resolves them against the
+   enumerated `templates` lists and reports misses as warnings.
+   `active-state.jsx` reports `uiLanguage` (`zh_CN`) so callers can adapt.
+4. **User data files are encoding-sniffed.** `readTextSmart()` reads UTF-8
+   (BOM tolerated), falls back to GB-family codecs when the UTF-8 decode is
+   damaged — on this AE build invalid UTF-8 makes `read()` return an empty
+   string rather than substituting U+FFFD, so both signals are checked.
+
+Known gap: an offline `-s` run where the skill path itself contains
+non-ASCII characters is untested (see the verification table). Listener mode
+does not share this risk — the script path travels inside a UTF-8 command
+file.
