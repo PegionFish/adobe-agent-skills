@@ -40,26 +40,27 @@
             return;
         }
 
-        // Read CSV
-        var csvFile = new File(args.csvPath);
-        if (!csvFile.exists) {
+        // Read CSV — Excel's plain "CSV" save is ANSI/GBK on Chinese Windows
+        // and its "CSV UTF-8" save carries a BOM; readTextSmart handles both,
+        // parseCSV handles quoted fields with embedded newlines.
+        if (!new File(args.csvPath).exists) {
             writeResult({ error: "CSV file not found: " + args.csvPath });
             return;
         }
+        var loaded = readTextSmart(args.csvPath);
+        if (loaded === null) {
+            writeResult({ error: "CSV file could not be opened: " + args.csvPath });
+            return;
+        }
 
-        csvFile.encoding = "UTF-8";
-        csvFile.open("r");
-        var content = csvFile.read();
-        csvFile.close();
-
-        var lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-        if (lines.length < 2) {
+        var rows = parseCSV(loaded.text);
+        if (rows.length < 2) {
             writeResult({ error: "CSV needs at least a header row and one data row" });
             return;
         }
 
         // Parse header
-        var headers = parseCSVLine(lines[0]);
+        var headers = rows[0];
         var namingCol = args.namingColumn || headers[0];
         var namingIdx = -1;
         for (var h = 0; h < headers.length; h++) {
@@ -77,11 +78,10 @@
         var createdCount = 0;
         var createdComps = [];
 
-        // Process each data row
-        for (var r = 1; r < lines.length; r++) {
-            if (lines[r].length === 0) continue;
-
-            var fields = parseCSVLine(lines[r]);
+        // Process each data row (skip blank lines: a lone empty field)
+        for (var r = 1; r < rows.length; r++) {
+            var fields = rows[r];
+            if (fields.length === 1 && fields[0].length === 0) continue;
             if (fields.length === 0) continue;
 
             // Duplicate template comp
@@ -118,7 +118,8 @@
             message: "Created " + createdCount + " comp variations from CSV in folder '" + folderName + "'",
             count: createdCount,
             folder: folderName,
-            comps: createdComps
+            comps: createdComps,
+            sourceEncoding: loaded.encoding
         });
     } catch (e) {
         try { writeResult({ error: e.toString(), line: e.line, fileName: e.fileName }); }
@@ -127,37 +128,3 @@
         app.endUndoGroup();
     }
 })();
-
-function parseCSVLine(line) {
-    var fields = [];
-    var current = "";
-    var inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-        var ch = line.charAt(i);
-
-        if (inQuotes) {
-            if (ch === '"') {
-                if (i + 1 < line.length && line.charAt(i + 1) === '"') {
-                    current += '"';
-                    i++;
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                current += ch;
-            }
-        } else {
-            if (ch === '"') {
-                inQuotes = true;
-            } else if (ch === ',') {
-                fields.push(current);
-                current = "";
-            } else {
-                current += ch;
-            }
-        }
-    }
-    fields.push(current);
-    return fields;
-}

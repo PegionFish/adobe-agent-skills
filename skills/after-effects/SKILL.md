@@ -231,6 +231,8 @@ on both sides, so raw Chinese inside the JSON is fine there (as are JSON
 | `writeResult(obj)` | Write JSON result to the system temp dir (`%TEMP%` on Windows, `/tmp` on macOS — see `AE_TMP_DIR` in `lib/utils.jsx`) |
 | `writeError(msg, detail)` | Last-resort error capture when JSON.stringify fails |
 | `readArgs()` | Read args from `ae-assistant-args.json` in the same temp dir |
+| `readTextSmart(path)` | Read a user data file tolerantly → `{text, encoding}`: UTF-8 with/without BOM, auto-fallback to GBK (Chinese Windows tools, Excel's plain CSV save). Use for SRT/CSV input |
+| `parseCSV(content)` | RFC-4180 CSV parse (quoted fields, embedded newlines, BOM strip) → array of rows |
 | `getLayerType(layer)` | Returns type string: "shape", "text", "null", "precomp", etc. |
 | `getBlendModeName(mode)` | BlendingMode enum → string name |
 | `getActiveComp()` | Returns active comp or writes error and returns null |

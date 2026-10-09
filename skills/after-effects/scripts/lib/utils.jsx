@@ -64,6 +64,91 @@ function readArgs() {
     return JSON.parse(content);
 }
 
+// --- Encoding-aware reading for user data files (SRT/CSV/...) -------------
+
+// Strip a UTF-8 BOM if present (Excel's "CSV UTF-8" save adds one).
+function stripBOM(s) {
+    if (s && s.length > 0 && s.charAt(0) === "\uFEFF") return s.substring(1);
+    return s;
+}
+
+// Read a text file that may be UTF-8 (with or without BOM) or GBK-family
+// encoded — GBK/GB2312 SRT and CSV files are common output of Chinese
+// Windows tools, and Excel's plain "CSV" save is ANSI/GBK on Chinese
+// Windows. Reads as UTF-8 first; when that shows damage, re-reads with
+// GB-family codec names until one decodes. Returns
+// { text: "...", encoding: "<codec used>" }, or null when unopenable.
+//
+// Damage signals (AE 26.2 ExtendScript, measured): invalid UTF-8 either
+// substitutes U+FFFD or makes read() return an EMPTY string while the file
+// has bytes — both mean "not UTF-8". Codec candidates are tried in
+// superset order; a decode that comes back one-char-per-byte is a
+// single-byte passthrough (wrong codec) and is rejected.
+function readTextSmart(path) {
+    var f = new File(path);
+    if (!f.exists) return null;
+    f.encoding = "UTF-8";
+    if (!f.open("r")) return null;
+    var byteLen = f.length;
+    var txt = stripBOM(f.read());
+    f.close();
+    var damaged = (txt && txt.indexOf("\uFFFD") !== -1) ||
+                  (byteLen > 0 && (!txt || txt.length === 0));
+    if (damaged) {
+        var candidates = ["GBK", "GB18030", "GB2312", "CP936", "windows-936"];
+        for (var c = 0; c < candidates.length; c++) {
+            var g = new File(path);
+            g.encoding = candidates[c];
+            if (!g.open("r")) continue;
+            var raw = stripBOM(g.read());
+            var rawByteLen = g.length;
+            g.close();
+            if (raw && raw.length > 0 && raw.length < rawByteLen) {
+                return { text: raw, encoding: candidates[c] };
+            }
+        }
+    }
+    return { text: txt, encoding: "UTF-8" };
+}
+
+// Parse CSV content per RFC 4180: quoted fields, embedded commas and
+// newlines, "" as an escaped quote. Returns an array of rows, each an array
+// of field strings. Strips a leading BOM; accepts CRLF and LF endings.
+function parseCSV(content) {
+    content = stripBOM(String(content));
+    var rows = [];
+    var row = [];
+    var field = "";
+    var inQuotes = false;
+    var i = 0;
+    while (i < content.length) {
+        var ch = content.charAt(i);
+        if (inQuotes) {
+            if (ch === "\"") {
+                if (content.charAt(i + 1) === "\"") { field += "\""; i += 2; }
+                else { inQuotes = false; i++; }
+            } else { field += ch; i++; }
+            continue;
+        }
+        if (ch === "\"") { inQuotes = true; i++; continue; }
+        if (ch === ",") { row.push(field); field = ""; i++; continue; }
+        if (ch === "\r" || ch === "\n") {
+            if (ch === "\r" && content.charAt(i + 1) === "\n") i++;
+            i++;
+            row.push(field); rows.push(row);
+            field = ""; row = [];
+            continue;
+        }
+        field += ch; i++;
+    }
+    // Final field/row when the content does not end with a newline.
+    if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+    }
+    return rows;
+}
+
 // Detect layer type string
 function getLayerType(layer) {
     switch (layer.matchName) {

@@ -43,20 +43,21 @@
             }
         }
 
-        // Read SRT file
-        var srtFile = new File(args.srtPath);
-        if (!srtFile.exists) {
+        // Read SRT file — UTF-8 (with or without BOM) or GBK from Chinese
+        // Windows subtitle tools; readTextSmart detects and decodes both.
+        if (!new File(args.srtPath).exists) {
             writeResult({ error: "SRT file not found: " + args.srtPath });
             return;
         }
 
-        srtFile.encoding = "UTF-8";
-        srtFile.open("r");
-        var content = srtFile.read();
-        srtFile.close();
+        var loaded = readTextSmart(args.srtPath);
+        if (loaded === null) {
+            writeResult({ error: "SRT file could not be opened: " + args.srtPath });
+            return;
+        }
 
         // Parse SRT
-        var subtitles = parseSRT(content);
+        var subtitles = parseSRT(loaded.text);
 
         if (subtitles.length === 0) {
             writeResult({ error: "No subtitles found in SRT file" });
@@ -112,7 +113,8 @@
             success: true,
             message: "Imported " + createdCount + " subtitles from SRT",
             count: createdCount,
-            srtPath: args.srtPath
+            srtPath: args.srtPath,
+            sourceEncoding: loaded.encoding
         });
     } catch (e) {
         try { writeResult({ error: e.toString(), line: e.line, fileName: e.fileName }); }

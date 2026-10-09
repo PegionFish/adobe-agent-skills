@@ -86,13 +86,17 @@ function doImport(csvPath) {
         return;
     }
 
-    csvFile.encoding = "UTF-8";
-    csvFile.open("r");
-    var content = csvFile.read();
-    csvFile.close();
+    // Excel's plain "CSV" re-save is ANSI/GBK on Chinese Windows, and its
+    // "CSV UTF-8" save adds a BOM — readTextSmart/parseCSV handle both, plus
+    // multi-line quoted text fields (exported via csvEscape).
+    var loaded = readTextSmart(csvPath);
+    if (loaded === null) {
+        writeResult({ error: "CSV file could not be opened: " + csvPath });
+        return;
+    }
 
-    var lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    if (lines.length < 2) {
+    var rows = parseCSV(loaded.text);
+    if (rows.length < 2) {
         writeResult({ error: "CSV file is empty or has only headers" });
         return;
     }
@@ -101,10 +105,8 @@ function doImport(csvPath) {
     var updatedCount = 0;
     var errors = [];
 
-    for (var l = 1; l < lines.length; l++) {
-        if (lines[l].length === 0) continue;
-
-        var fields = parseCSVLine(lines[l]);
+    for (var l = 1; l < rows.length; l++) {
+        var fields = rows[l];
         if (fields.length < 6) continue;
 
         var compName = fields[0];
@@ -166,7 +168,8 @@ function doImport(csvPath) {
         message: "Updated " + updatedCount + " text layers from CSV" +
                  (errors.length > 0 ? " (" + errors.length + " errors)" : ""),
         count: updatedCount,
-        errors: errors
+        errors: errors,
+        sourceEncoding: loaded.encoding
     });
 }
 
@@ -176,38 +179,4 @@ function csvEscape(str) {
         return '"' + str.replace(/"/g, '""') + '"';
     }
     return str;
-}
-
-function parseCSVLine(line) {
-    var fields = [];
-    var current = "";
-    var inQuotes = false;
-
-    for (var i = 0; i < line.length; i++) {
-        var ch = line.charAt(i);
-
-        if (inQuotes) {
-            if (ch === '"') {
-                if (i + 1 < line.length && line.charAt(i + 1) === '"') {
-                    current += '"';
-                    i++; // skip escaped quote
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                current += ch;
-            }
-        } else {
-            if (ch === '"') {
-                inQuotes = true;
-            } else if (ch === ',') {
-                fields.push(current);
-                current = "";
-            } else {
-                current += ch;
-            }
-        }
-    }
-    fields.push(current);
-    return fields;
 }
