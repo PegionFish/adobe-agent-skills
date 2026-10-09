@@ -507,7 +507,7 @@ If a script fails, check these in order:
    (File > Scripts > Run Script File...) or close AE to use the offline engine.
 2. **`~/.ae-assistant-log`** — the runner logs every execution, mode, args, results and errors here (both platforms)
 3. **Runner error file** — `/tmp/ae-assistant-error.txt` (macOS, JXA-level errors) or `%TEMP%\ae-assistant-error.txt` (Windows, script-level errors)
-4. **Runner output** — `%TEMP%\ae-assistant-runner-out.txt` / `-err.txt` on Windows: raw AfterFX.exe stdout/stderr
+4. **Runner output** — `%TEMP%\ae-assistant-runner-out-<pid>.txt` / `-err-<pid>.txt` on Windows: raw AfterFX.exe stdout/stderr from that run (per-run PID-suffixed; take the newest)
 5. **`~/.ae-assistant-extendscript.log`** — ExtendScript-level logs from `appendLog()` in utils.jsx
 6. **AE Preferences** — Ensure "Allow Scripts to Write Files and Access Network" is enabled
 

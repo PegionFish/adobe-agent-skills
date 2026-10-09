@@ -110,7 +110,7 @@ Shared files (all in `%TEMP%`, agreed with `lib/utils.jsx`):
 | `ae-assistant-error.txt` | AE → runner | script-level failure |
 | `ae-assistant-commands/command.json` | runner → listener | two plain lines: `<nonce>` `\n` `<script path>` (never eval'd) |
 | `ae-assistant-listener.json` | listener → runner | heartbeat, refreshed every ~2 s |
-| `ae-assistant-runner-out.txt` / `-err.txt` | AE → runner | raw engine stdout/stderr (offline mode) |
+| `ae-assistant-runner-out-<pid>.txt` / `-err-<pid>.txt` | AE → runner | raw engine stdout/stderr (offline mode, per-run PID-suffixed to avoid handle collisions) |
 
 Logs: `%USERPROFILE%\.ae-assistant-log` (runner), `~/.ae-assistant-extendscript.log` (ExtendScript).
 
@@ -216,3 +216,8 @@ Known gap: an offline `-s` run where the skill path itself contains
 non-ASCII characters is untested (see the verification table). Listener mode
 does not share this risk — the script path travels inside a UTF-8 command
 file.
+
+Known cosmetic: several untouched shipped scripts still carry em-dashes in
+*comments* (they render as garbage under a GBK read but never execute);
+their *string literals* have been audited and are ASCII-only. New and
+generated scripts must stay pure ASCII per the SKILL.md rule.

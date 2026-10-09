@@ -47,7 +47,7 @@ $ErrorActionPreference = "Stop"
 # Force UTF-8 on stdout: when output is redirected (piped to another process
 # or captured by an agent), .NET encodes [Console]::Out with the OEM codepage
 # (437 on en-US, 936 on zh-CN). Chinese layer/comp names in the result JSON
-# then become '?' (CP437) or GBK bytes — unrecoverable loss either way. The
+# then become '?' (CP437) or GBK bytes - unrecoverable loss either way. The
 # result file written by lib/utils.jsx is UTF-8, so the pipe must be UTF-8 too.
 try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch {}
 
@@ -278,7 +278,14 @@ foreach ($f in @($RESULT_FILE, $ERROR_FILE)) {
 
 function Read-Result {
     param([string]$Path)
-    try { return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) } catch { return "" }
+    # The engine (or its child processes) can hold a handle on these files
+    # briefly after exit; retry instead of treating a transient lock as "no
+    # output" and reporting a misleading error branch.
+    for ($i = 0; $i -lt 10; $i++) {
+        try { return [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) }
+        catch { Start-Sleep -Milliseconds 100 }
+    }
+    return ""
 }
 
 # --- Execution: listener (drives an already-running AE) ------------------
@@ -291,7 +298,7 @@ if ($effectiveMode -eq "listener") {
     $nonce = [guid]::NewGuid().ToString()
     $scriptForward = $ScriptPath.Replace('\', '/')
     # Two plain lines: "<nonce>`n<script path>". ae-listener.jsx parses this
-    # with a line split instead of eval() — the command file lives in the
+    # with a line split instead of eval() - the command file lives in the
     # shared temp dir, writable by any local process.
     $cmdPayload = $nonce + "`n" + $scriptForward
     $tmpCmd = "$CMD_FILE.tmp"
@@ -333,8 +340,12 @@ if ($effectiveMode -eq "listener") {
 
 Write-Log "OFFLINE MODE: starting hidden AE engine"
 
-$outFile = Join-Path $TMP_DIR "ae-assistant-runner-out.txt"
-$errFile = Join-Path $TMP_DIR "ae-assistant-runner-err.txt"
+# Per-run (PID-suffixed) capture files: a fixed name collides with handles a
+# previous or concurrent run still holds, which made Start-Process redirects
+# or follow-up reads fail with "file in use". Unique names also make two
+# simultaneous runner invocations safe.
+$outFile = Join-Path $TMP_DIR ("ae-assistant-runner-out-{0}.txt" -f $PID)
+$errFile = Join-Path $TMP_DIR ("ae-assistant-runner-err-{0}.txt" -f $PID)
 foreach ($f in @($outFile, $errFile)) {
     if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force -ErrorAction SilentlyContinue }
 }

@@ -23,7 +23,6 @@ $runner     = Join-Path $scriptsDir "runner.ps1"
 $mock       = Join-Path $testsDir "mock-afterfx.cmd"
 $someScript = Join-Path $scriptsDir "active-state.jsx"
 $tmp        = [System.IO.Path]::GetTempPath()
-$runnerOut  = Join-Path $tmp "ae-assistant-runner-out.txt"
 $heartbeat  = Join-Path $tmp "ae-assistant-listener.json"
 
 $script:Pass = 0
@@ -74,7 +73,17 @@ Assert-Contains "args reach the result" $r.Output '"compName":"Main Comp"'
 
 # --- 2. the execution payload handed to the engine -------------------------
 Write-Host "2. execution payload (-s + `$.evalFile)"
-$raw = if (Test-Path -LiteralPath $runnerOut) { [System.IO.File]::ReadAllText($runnerOut) } else { "" }
+# The capture files are PID-suffixed per run; pick the newest from test 1.
+# Retry briefly: the mock's child can hold the redirect handle for a moment.
+$raw = ""
+for ($i = 0; $i -lt 20; $i++) {
+    $newest = Get-ChildItem -Path $tmp -Filter "ae-assistant-runner-out-*.txt" -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($newest) {
+        try { $raw = [System.IO.File]::ReadAllText($newest.FullName); if ($raw) { break } } catch {}
+    }
+    Start-Sleep -Milliseconds 100
+}
 Assert-Contains "uses -s with `$.evalFile" $raw '-s "$.evalFile('
 Assert-Contains "forward-slash script path" $raw "active-state.jsx');"
 
