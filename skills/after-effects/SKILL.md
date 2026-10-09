@@ -211,6 +211,16 @@ Every generated script MUST follow this template:
 })();
 ```
 
+**Non-ASCII text (Chinese etc.) in generated scripts:** escape every non-ASCII
+character as `\uXXXX` — `"\u4f60\u597d"`, never raw `你好`. ExtendScript loads
+BOM-less script files using the system codepage, so raw UTF-8 Chinese is
+garbled the moment AE reads the file (mojibake layer names, broken string
+comparisons, syntax errors). This applies to undo-group descriptions, result
+messages, text-layer content, expressions and any path containing non-ASCII.
+The safe alternative for data is `-ArgsFile`: the args file is read as UTF-8
+on both sides, so raw Chinese inside the JSON is fine there (as are JSON
+`\uXXXX` escapes).
+
 #### utils.jsx helpers available for generated scripts
 
 | Function | Purpose |
@@ -281,6 +291,11 @@ bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/true-comp-duplicator.jsx" '{"com
 bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/font-replace.jsx" '{"find": "Helvetica", "replace": "Inter-Regular", "dryRun": true}'
 bash "$SKILL_SCRIPTS/runner.sh" "$SKILL_SCRIPTS/font-replace.jsx" '{"find": "Helvetica", "replace": "Inter-Regular"}'
 ```
+
+Font values (`textDoc.font`) are locale-independent PostScript names — e.g.
+`MicrosoftYaHei` for 微软雅黑, `SourceHanSansCN-Regular` for 思源黑体. Run
+font-inventory.jsx first to discover the exact names on this machine instead
+of guessing from localized family names.
 
 **Project Cleanup** — remove unused footage, consolidate duplicate solids, remove empty folders. Always dryRun first:
 ```bash
@@ -497,6 +512,7 @@ When an error occurs, read `~/.ae-assistant-log` to understand what happened, fi
 
 - ALWAYS wrap mutations in `app.beginUndoGroup()` / `app.endUndoGroup()`
 - ALWAYS use matchNames for property access, not display names (display names are localized)
+- ALWAYS escape non-ASCII in generated JSX as `\uXXXX` (ExtendScript reads BOM-less scripts with the system codepage; raw UTF-8 Chinese is garbled on load). Chinese data values are safe inside the `-ArgsFile` JSON, which is read as UTF-8
 - ALWAYS use 1-based indexing for layers and project items
 - ALWAYS write action scripts to `$SKILL_SCRIPTS/ae-action.jsx` (the resolved real path, NOT a temp directory)
 - ALWAYS use relative `#include "lib/json2.jsx"` and `#include "lib/utils.jsx"` (NOT absolute paths)
@@ -516,4 +532,5 @@ When an error occurs, read `~/.ae-assistant-log` to understand what happened, fi
 - NEVER hardcode layer indices — use names, selection, or iteration
 - NEVER run destructive operations without user confirmation
 - NEVER assume a comp is active without checking
+- NEVER write raw non-ASCII characters into a generated JSX file — use `\uXXXX` escapes (see MUST); raw Chinese belongs in the args file, not the script
 - NEVER inline scripts through a shell heredoc (`cat > file << 'SCRIPT'` on macOS, chained `echo >>` on Windows) — use the Write tool instead, then a short runner command
