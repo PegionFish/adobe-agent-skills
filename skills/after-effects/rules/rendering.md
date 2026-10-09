@@ -71,6 +71,40 @@ om.file = new File("C:/Renders/project_output.mp4");
 
 ## Applying Templates
 
+> **Template names are LOCALIZED — never hardcode English names.**
+> On a 简体中文 AE the built-in templates are Chinese (`无损`, `使用 Alpha 无损耗`
+> — mind trailing spaces —, `最佳设置`, `当前设置`, …), so
+> `applyTemplate("Lossless")` throws and the queue silently keeps whatever was
+> set before. **MUST:** enumerate `om.templates` / `rqItem.templates` first and
+> match by keyword; if nothing matches, surface an error/warning in the result
+> instead of falling back silently. Note also that the output container/format
+> follows the applied template, NOT the extension of the `om.file` you set.
+
+```jsx
+// Locale-proof template resolution: exact match first (ignoring case and
+// trailing spaces), then substring match. Returns null when absent.
+function resolveTemplate(all, wanted) {
+    var w = String(wanted).toLowerCase();
+    for (var i = 0; i < all.length; i++) {
+        if (String(all[i]).replace(/\s+$/, "").toLowerCase() === w) return all[i];
+    }
+    for (var j = 0; j < all.length; j++) {
+        if (String(all[j]).toLowerCase().indexOf(w) !== -1) return all[j];
+    }
+    return null;   // caller MUST report this — do not fall back silently
+}
+
+var omNames = om.templates;               // e.g. ["无损", "使用 Alpha 无损耗", "H.264", ...]
+var picked = resolveTemplate(omNames, "lossless");
+if (picked === null) {
+    writeResult({ error: "No output module template matching 'lossless'. Available: " + omNames.join(" | ") });
+    return;
+}
+om.applyTemplate(picked);
+```
+
+The English names below are the **English-UI** defaults — reference only.
+
 ### Output Module Templates
 
 Output module templates control the format, codec, channels, and encoding settings.
@@ -81,7 +115,7 @@ om.applyTemplate(templateName);
 ```
 
 ```jsx
-// Common built-in template names (vary by AE version and installed codecs)
+// Common built-in template names — English UI only; localized on other UIs
 om.applyTemplate("Lossless");
 om.applyTemplate("Lossless with Alpha");
 om.applyTemplate("H.264");
@@ -98,7 +132,7 @@ rqItem.applyTemplate(templateName);
 ```
 
 ```jsx
-// Common built-in render settings template names
+// Common built-in render settings template names — English UI only
 rqItem.applyTemplate("Best Settings");
 rqItem.applyTemplate("Draft Settings");
 rqItem.applyTemplate("Current Settings");

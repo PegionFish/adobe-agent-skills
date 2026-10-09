@@ -70,17 +70,29 @@
         var rq = app.project.renderQueue;
         var addedCount = 0;
         var added = [];
+        var warnings = [];
+
+        function warn(msg) {
+            if (warnings.indexOf(msg) === -1) { warnings.push(msg); }
+        }
 
         for (var c = 0; c < comps.length; c++) {
             var comp = comps[c];
             var rqItem = rq.items.add(comp);
 
-            // Apply render settings template if specified
+            // Apply render settings template if specified. Template names are
+            // localized by UI language (e.g. 最佳设置 on a zh_CN AE), so
+            // resolve against the enumerated list instead of applying
+            // blindly — a miss must surface as a warning, or the queue would
+            // silently keep whatever the previous item had.
             if (args.renderTemplate) {
-                try {
-                    rqItem.applyTemplate(args.renderTemplate);
-                } catch (e) {
-                    // Template might not exist
+                var pickedRs = resolveTemplate(rqItem.templates, args.renderTemplate);
+                if (pickedRs === null) {
+                    warn("Render settings template not found (names are localized; available: "
+                         + rqItem.templates.join(" | ") + "): " + args.renderTemplate);
+                } else {
+                    try { rqItem.applyTemplate(pickedRs); }
+                    catch (eRs) { warn("Render settings applyTemplate failed: " + eRs.toString()); }
                 }
             }
 
@@ -88,14 +100,18 @@
             var om = rqItem.outputModule(1);
 
             if (args.outputModule) {
-                try {
-                    om.applyTemplate(args.outputModule);
-                } catch (e) {
-                    // Template might not exist
+                var pickedOm = resolveTemplate(om.templates, args.outputModule);
+                if (pickedOm === null) {
+                    warn("Output module template not found (names are localized; available: "
+                         + om.templates.join(" | ") + "): " + args.outputModule);
+                } else {
+                    try { om.applyTemplate(pickedOm); }
+                    catch (eOm) { warn("Output module applyTemplate failed: " + eOm.toString()); }
                 }
             }
 
-            // Set output path
+            // Set output path. The output container/format follows the applied
+            // output module template, not this file's extension.
             if (args.outputPath) {
                 var outputDir = args.outputPath;
                 // Ensure trailing separator
@@ -110,15 +126,18 @@
             addedCount++;
             added.push({
                 name: comp.name,
-                output: om.file ? om.file.fsName : "(default)"
+                output: om.file ? om.file.fsName : "(default)",
+                outputModule: om.name ? String(om.name) : ""
             });
         }
 
         writeResult({
             success: true,
-            message: "Added " + addedCount + " compositions to render queue",
+            message: "Added " + addedCount + " compositions to render queue"
+                     + (warnings.length > 0 ? " (" + warnings.length + " warnings)" : ""),
             count: addedCount,
             items: added,
+            warnings: warnings,
             note: "Use File > Export > Add to Render Queue or run 'aerender' from command line to start rendering"
         });
     } catch (e) {
@@ -126,3 +145,18 @@
         catch (e2) { writeError(e.toString(), "line:" + e.line); }
     }
 })();
+
+// Resolve a template name without assuming the AE UI language: exact match
+// (case-insensitive, trailing spaces ignored — localized names often carry
+// them) first, then substring match. Returns the real template name, or
+// null when nothing matches.
+function resolveTemplate(all, wanted) {
+    var w = String(wanted).toLowerCase();
+    for (var i = 0; i < all.length; i++) {
+        if (String(all[i]).replace(/\s+$/, "").toLowerCase() === w) return all[i];
+    }
+    for (var j = 0; j < all.length; j++) {
+        if (String(all[j]).toLowerCase().indexOf(w) !== -1) return all[j];
+    }
+    return null;
+}

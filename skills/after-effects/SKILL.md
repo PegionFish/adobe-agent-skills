@@ -91,6 +91,9 @@ Use `--background` for all query scripts — this skips `ae.activate()` so AE do
 bash scripts/runner.sh --background scripts/active-state.jsx
 ```
 Then read `/tmp/ae-assistant-result.json` for active comp, selected layers, CTI.
+The result also reports `uiLanguage` (e.g. `zh_CN`): when it is not `en_US`,
+render template names and property display names are localized — enumerate
+instead of hardcoding English names (see [rules/rendering.md](rules/rendering.md)).
 
 If this is the first interaction or the project context is unknown, also run:
 ```bash

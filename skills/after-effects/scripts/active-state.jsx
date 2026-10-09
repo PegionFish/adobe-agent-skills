@@ -7,6 +7,7 @@
 (function() {
     var result = {
         aeVersion: app.version,
+        uiLanguage: "",
         activeComp: null,
         selectedLayers: [],
         selectedProperties: [],
@@ -14,6 +15,10 @@
         workAreaStart: null,
         workAreaEnd: null
     };
+
+    // e.g. "zh_CN" — lets the caller adapt to a localized UI (render template
+    // names, display names). Wrapped: very old builds lack isoLanguage.
+    try { result.uiLanguage = String(app.isoLanguage); } catch (eLang) {}
 
     var comp = app.project.activeItem;
     if (comp && comp instanceof CompItem) {
