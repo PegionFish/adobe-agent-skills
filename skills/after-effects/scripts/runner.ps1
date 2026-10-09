@@ -44,6 +44,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Force UTF-8 on stdout: when output is redirected (piped to another process
+# or captured by an agent), .NET encodes [Console]::Out with the OEM codepage
+# (437 on en-US, 936 on zh-CN). Chinese layer/comp names in the result JSON
+# then become '?' (CP437) or GBK bytes — unrecoverable loss either way. The
+# result file written by lib/utils.jsx is UTF-8, so the pipe must be UTF-8 too.
+try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch {}
+
 # --- Paths ---------------------------------------------------------------
 # Both sides (this runner and lib/utils.jsx via Folder.temp) resolve the same
 # per-user temp directory: [IO.Path]::GetTempPath() == %TEMP% == Folder.temp
@@ -380,10 +387,9 @@ if ($timedOut) {
 $elapsed = [math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
 Write-Log "OFFLINE ENGINE EXITED after ${elapsed}s"
 
-$stdout = ""
-$stderr = ""
-if (Test-Path -LiteralPath $outFile) { $stdout = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) }
-if (Test-Path -LiteralPath $errFile) { $stderr = (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue) }
+# Read the engine's raw stdout/stderr as UTF-8 (Get-Content would guess ANSI)
+$stdout = Read-Result $outFile
+$stderr = Read-Result $errFile
 
 if (Test-Path -LiteralPath $RESULT_FILE) {
     $result = Read-Result $RESULT_FILE

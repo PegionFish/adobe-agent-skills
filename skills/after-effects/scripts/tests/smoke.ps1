@@ -13,6 +13,10 @@
 
 $ErrorActionPreference = "Continue"
 
+# Decode the child runner's stdout as UTF-8 (the runner now emits UTF-8;
+# without this the parent would decode it with the OEM codepage).
+try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch {}
+
 $testsDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptsDir = Split-Path -Parent $testsDir
 $runner     = Join-Path $scriptsDir "runner.ps1"
@@ -109,6 +113,37 @@ if ($null -ne $age -and $age -le 15) {
     Assert "exit code 3" ($r.Code -eq 3) ("exit=" + $r.Code)
     Assert-Contains "tells the user how to fix it" $r.Output "ae-listener.jsx"
 }
+
+# --- 8. Chinese (non-ASCII) stdout round-trip ------------------------------
+# The result JSON written by lib/utils.jsx is UTF-8; the runner must emit it
+# as UTF-8 on stdout as well. Before the locale fix, the OEM codepage (437 or
+# 936) turned every Chinese character into '?' or GBK bytes, breaking every
+# name-targeted follow-up call. The Chinese string is built from code points
+# so this test file itself stays ASCII-only (PS 5.1 parses BOM-less files as
+# ANSI). Raw bytes are asserted via a captured file, bypassing re-decoding.
+Write-Host "8. Chinese (non-ASCII) stdout round-trip"
+$cn = [string][char]0x4E3B + [string][char]0x5408 + [string][char]0x6210
+$cnArgsFile = Join-Path $tmp "smoke-args-cn.json"
+[System.IO.File]::WriteAllText($cnArgsFile, ('{"compName":"' + $cn + '","dryRun":true}'), (New-Object System.Text.UTF8Encoding($false)))
+$capOut = Join-Path $tmp "smoke-stdout-cap.txt"
+$capErr = Join-Path $tmp "smoke-stderr-cap.txt"
+$env:MOCK_AE_MODE = "ok"
+$p = Start-Process -FilePath "powershell" `
+        -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$runner,"-Mode","offline","-AfterFxPath",$mock,"-Timeout","20","-ArgsFile",$cnArgsFile,$someScript) `
+        -RedirectStandardOutput $capOut -RedirectStandardError $capErr -PassThru -Wait
+$bytes = [System.IO.File]::ReadAllBytes($capOut)
+$expected = [System.Text.Encoding]::UTF8.GetBytes($cn)
+$found = $false
+for ($i = 0; $i -le $bytes.Length - $expected.Length; $i++) {
+    $match = $true
+    for ($j = 0; $j -lt $expected.Length; $j++) {
+        if ($bytes[$i + $j] -ne $expected[$j]) { $match = $false; break }
+    }
+    if ($match) { $found = $true; break }
+}
+Assert "exit code 0" ($p.ExitCode -eq 0) ("exit=" + $p.ExitCode)
+Assert "Chinese arrives as UTF-8 bytes" $found ("captured " + $bytes.Length + " bytes: " + [System.Text.Encoding]::UTF8.GetString($bytes))
+Assert "no '?' replacement loss" (-not ($bytes -contains 63)) ""
 
 Write-Host ""
 $total = $script:Pass + $script:Fail
