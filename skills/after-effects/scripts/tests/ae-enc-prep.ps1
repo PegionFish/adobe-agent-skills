@@ -1,7 +1,8 @@
-# ae-enc-prep.ps1 — data files for ae-encoding-test.jsx (pure ASCII source).
-# Writes 主合成测试 (0x4E3B 0x5408 0x6210 0x6D4B 0x8BD5) as UTF-8 without BOM,
+# ae-enc-prep.ps1 - data files for ae-encoding-test.jsx (pure ASCII source;
+# the hanzi below are written from code points so this file stays ASCII).
+# Writes 0x4E3B 0x5408 0x6210 0x6D4B 0x8BD5 (5 hanzi) as UTF-8 without BOM,
 # UTF-8 with BOM and GBK (cp936), plus a GBK CSV with a quoted multi-line
-# field (header 名称,备注; row 主合成,"第一行\n第二行").
+# field (2-hanzi headers, 3-hanzi cells, see the code points below).
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tests\ae-enc-prep.ps1
 #

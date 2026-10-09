@@ -1,11 +1,11 @@
-// srt-import.jsx — Import SRT subtitle file and create timed text layers
+// srt-import.jsx - Import SRT subtitle file and create timed text layers
 // Args: {
 //   "srtPath": "/path/to/subtitles.srt",
-//   "font": "Arial",           — PostScript font name (optional)
-//   "fontSize": 48,             — font size in px (optional, default 48)
-//   "fillColor": [1,1,1],       — RGB 0-1 (optional, default white)
-//   "position": "bottom",       — "bottom", "center", "top" (optional)
-//   "compName": "Main Comp"     — target comp (optional, uses active)
+//   "font": "Arial",           - PostScript font name (optional)
+//   "fontSize": 48,             - font size in px (optional, default 48)
+//   "fillColor": [1,1,1],       - RGB 0-1 (optional, default white)
+//   "position": "bottom",       - "bottom", "center", "top" (optional)
+//   "compName": "Main Comp"     - target comp (optional, uses active)
 // }
 // Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
@@ -43,7 +43,7 @@
             }
         }
 
-        // Read SRT file — UTF-8 (with or without BOM) or GBK from Chinese
+        // Read SRT file - UTF-8 (with or without BOM) or GBK from Chinese
         // Windows subtitle tools; readTextSmart detects and decodes both.
         if (!new File(args.srtPath).exists) {
             writeResult({ error: "SRT file not found: " + args.srtPath });

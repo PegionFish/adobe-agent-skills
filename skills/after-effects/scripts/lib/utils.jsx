@@ -1,4 +1,4 @@
-// utils.jsx — Shared helpers for AE Assistant query scripts
+// utils.jsx - Shared helpers for AE Assistant query scripts
 // All query scripts #include this file
 
 // --- Shared IPC paths (cross-platform) -----------------------------------
@@ -19,7 +19,7 @@ function writeResult(obj) {
     outFile.close();
 }
 
-// Write error even if JSON.stringify fails — last-resort error capture
+// Write error even if JSON.stringify fails - last-resort error capture
 function writeError(message, detail) {
     var errStr = '{"error":' + '"' + String(message).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n') + '"';
     if (detail) {
@@ -33,7 +33,7 @@ function writeError(message, detail) {
     outFile.close();
 }
 
-// Append to persistent log file (never throws — logging must not break a run)
+// Append to persistent log file (never throws - logging must not break a run)
 function appendLog(message) {
     try {
         var logFile = new File("~/.ae-assistant-extendscript.log");
@@ -73,7 +73,7 @@ function stripBOM(s) {
 }
 
 // Read a text file that may be UTF-8 (with or without BOM) or GBK-family
-// encoded — GBK/GB2312 SRT and CSV files are common output of Chinese
+// encoded - GBK/GB2312 SRT and CSV files are common output of Chinese
 // Windows tools, and Excel's plain "CSV" save is ANSI/GBK on Chinese
 // Windows. Reads as UTF-8 first; when that shows damage, re-reads with
 // GB-family codec names until one decodes. Returns
@@ -81,7 +81,7 @@ function stripBOM(s) {
 //
 // Damage signals (AE 26.2 ExtendScript, measured): invalid UTF-8 either
 // substitutes U+FFFD or makes read() return an EMPTY string while the file
-// has bytes — both mean "not UTF-8". Codec candidates are tried in
+// has bytes - both mean "not UTF-8". Codec candidates are tried in
 // superset order; a decode that comes back one-char-per-byte is a
 // single-byte passthrough (wrong codec) and is rejected.
 function readTextSmart(path) {
@@ -225,7 +225,7 @@ function getCompByName(name) {
     return null;
 }
 
-// Recursive property tree walker — calls leafFn(prop, path) on each leaf property
+// Recursive property tree walker - calls leafFn(prop, path) on each leaf property
 function walkProperties(group, leafFn, path) {
     if (path === undefined) path = "";
     for (var i = 1; i <= group.numProperties; i++) {

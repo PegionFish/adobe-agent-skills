@@ -61,7 +61,7 @@
         }
 
         if (split.length === 0) {
-            writeResult({ error: "No layers could be split at time " + splitTime + "s — CTI must be within each layer's in/out range" });
+            writeResult({ error: "No layers could be split at time " + splitTime + "s - CTI must be within each layer's in/out range" });
             return;
         }
 

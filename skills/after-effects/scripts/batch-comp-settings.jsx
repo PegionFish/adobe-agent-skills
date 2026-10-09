@@ -101,31 +101,31 @@
 
             if (args.fps !== undefined && comp.frameRate !== args.fps) {
                 comp.frameRate = args.fps;
-                changes.push("fps→" + args.fps);
+                changes.push("fps: " + args.fps);
             }
 
             if (args.width !== undefined && args.height !== undefined) {
                 if (comp.width !== args.width || comp.height !== args.height) {
                     comp.width = args.width;
                     comp.height = args.height;
-                    changes.push("size→" + args.width + "x" + args.height);
+                    changes.push("size: " + args.width + "x" + args.height);
                 }
             } else if (args.width !== undefined && comp.width !== args.width) {
                 comp.width = args.width;
-                changes.push("width→" + args.width);
+                changes.push("width: " + args.width);
             } else if (args.height !== undefined && comp.height !== args.height) {
                 comp.height = args.height;
-                changes.push("height→" + args.height);
+                changes.push("height: " + args.height);
             }
 
             if (args.duration !== undefined && comp.duration !== args.duration) {
                 comp.duration = args.duration;
-                changes.push("duration→" + args.duration + "s");
+                changes.push("duration: " + args.duration + "s");
             }
 
             if (args.bgColor !== undefined) {
                 comp.bgColor = args.bgColor;
-                changes.push("bgColor→[" + args.bgColor.join(",") + "]");
+                changes.push("bgColor: [" + args.bgColor.join(",") + "]");
             }
 
             if (changes.length > 0) {

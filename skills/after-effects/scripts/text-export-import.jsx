@@ -1,7 +1,7 @@
-// text-export-import.jsx — Export/import all text content to/from CSV
+// text-export-import.jsx - Export/import all text content to/from CSV
 // Args: {
-//   "mode": "export",                  — "export" or "import"
-//   "csvPath": "C:\\path\\to\\text.csv" — file path for CSV (defaults to the temp dir)
+//   "mode": "export",                  - "export" or "import"
+//   "csvPath": "C:\\path\\to\\text.csv" - file path for CSV (defaults to the temp dir)
 // }
 // CSV format: comp_name, layer_name, layer_index, text_content
 // Output: ae-assistant-result.json in the system temp dir
@@ -87,7 +87,7 @@ function doImport(csvPath) {
     }
 
     // Excel's plain "CSV" re-save is ANSI/GBK on Chinese Windows, and its
-    // "CSV UTF-8" save adds a BOM — readTextSmart/parseCSV handle both, plus
+    // "CSV UTF-8" save adds a BOM - readTextSmart/parseCSV handle both, plus
     // multi-line quoted text fields (exported via csvEscape).
     var loaded = readTextSmart(csvPath);
     if (loaded === null) {

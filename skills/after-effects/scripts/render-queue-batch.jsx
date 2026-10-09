@@ -1,11 +1,11 @@
-// render-queue-batch.jsx — Add multiple comps to render queue with consistent settings
+// render-queue-batch.jsx - Add multiple comps to render queue with consistent settings
 // Args: {
-//   "compNames": ["Final 16x9", "Final 9x16"],  — comp names to add (optional)
-//   "scope": "selected",     — "selected" (project panel), "folder" (by folder name), "all"
-//   "folderName": "Renders", — for scope "folder"
-//   "outputPath": "~/Desktop/renders/",  — output directory
-//   "outputModule": "Lossless",          — output module template name (optional)
-//   "renderTemplate": "Best Settings",   — render settings template name (optional)
+//   "compNames": ["Final 16x9", "Final 9x16"],  - comp names to add (optional)
+//   "scope": "selected",     - "selected" (project panel), "folder" (by folder name), "all"
+//   "folderName": "Renders", - for scope "folder"
+//   "outputPath": "~/Desktop/renders/",  - output directory
+//   "outputModule": "Lossless",          - output module template name (optional)
+//   "renderTemplate": "Best Settings",   - render settings template name (optional)
 // }
 // Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
@@ -81,9 +81,9 @@
             var rqItem = rq.items.add(comp);
 
             // Apply render settings template if specified. Template names are
-            // localized by UI language (e.g. 最佳设置 on a zh_CN AE), so
+            // localized by UI language (the zh_CN name for Best Settings), so
             // resolve against the enumerated list instead of applying
-            // blindly — a miss must surface as a warning, or the queue would
+            // blindly - a miss must surface as a warning, or the queue would
             // silently keep whatever the previous item had.
             if (args.renderTemplate) {
                 var pickedRs = resolveTemplate(rqItem.templates, args.renderTemplate);
@@ -147,7 +147,7 @@
 })();
 
 // Resolve a template name without assuming the AE UI language: exact match
-// (case-insensitive, trailing spaces ignored — localized names often carry
+// (case-insensitive, trailing spaces ignored - localized names often carry
 // them) first, then substring match. Returns the real template name, or
 // null when nothing matches.
 function resolveTemplate(all, wanted) {

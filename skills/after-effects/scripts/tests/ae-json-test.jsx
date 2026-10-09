@@ -1,4 +1,4 @@
-// ae-json-test.jsx — verification of the recursive-descent JSON.parse in
+// ae-json-test.jsx - verification of the recursive-descent JSON.parse in
 // lib/json2.jsx. Unlike smoke.ps1 this needs a REAL After Effects install:
 //
 //   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\runner.ps1 -Timeout 300 scripts\tests\ae-json-test.jsx
@@ -6,8 +6,9 @@
 // Covers: scalars, arrays, objects, \uXXXX escapes (Chinese), all string
 // escapes, numbers (frac/exp/negative), nested structures with whitespace,
 // stringify round-trip, the reviver, and 9 invalid inputs that must throw.
-#include "lib/json2.jsx"
-#include "lib/utils.jsx"
+// NOTE: lives in tests\ - includes go up one level (see ae-encoding-test.jsx).
+#include "../lib/json2.jsx"
+#include "../lib/utils.jsx"
 
 (function() {
     var failures = [];

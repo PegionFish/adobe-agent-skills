@@ -1,4 +1,4 @@
-// ae-listener.jsx — Run this INSIDE a live After Effects instance so that the
+// ae-listener.jsx - Run this INSIDE a live After Effects instance so that the
 // Windows runner can execute scripts against the user's open project.
 //
 // Why this exists: After Effects on Windows is single-instance. When an AE
@@ -14,7 +14,7 @@
 //
 // Protocol (all paths live in the shared temp dir == Folder.temp):
 //   command.json    runner -> AE   two plain lines: "<nonce>\n<script path>"
-//                                  (deliberately not JSON, and never eval'd —
+//                                  (deliberately not JSON, and never eval'd -
 //                                  the temp dir is writable by any local process)
 //   result.json     AE -> runner   whatever the script wrote via writeResult(),
 //                                  plus an injected "_nonce" field
@@ -64,7 +64,7 @@ function aeListenerWriteError(message, nonce) {
 }
 
 // Windows paths never contain newlines; only strip a stray CR left by a
-// CRLF-written command file. Do NOT trim other whitespace — it can be part
+// CRLF-written command file. Do NOT trim other whitespace - it can be part
 // of a legitimate path.
 function aeListenerStripCR(s) {
     if (s && s.length > 0 && s.charAt(s.length - 1) === "\r") {
@@ -108,7 +108,7 @@ function aeListenerTick() {
 
     // Read and consume the command first so a slow script can never be
     // picked up twice. Payload: "<nonce>\n<script path>" (see the protocol
-    // note at the top). Parsing is a plain line split — no eval on temp-dir
+    // note at the top). Parsing is a plain line split - no eval on temp-dir
     // content.
     var nonce = "";
     var scriptPath = "";
@@ -140,7 +140,7 @@ function aeListenerTick() {
     }
 
     if (!aeListenerStampResult(nonce)) {
-        // Script produced nothing — surface it instead of letting the runner
+        // Script produced nothing - surface it instead of letting the runner
         // wait for its full timeout.
         if (!new File(AE_L_ERROR).exists) {
             aeListenerWriteError("script completed without writing a result file", nonce);

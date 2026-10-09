@@ -1,9 +1,9 @@
-// comp-from-csv.jsx — Generate comp variations from CSV data
+// comp-from-csv.jsx - Generate comp variations from CSV data
 // Args: {
-//   "templateComp": "Lower Third",   — name of the template composition
-//   "csvPath": "/path/to/data.csv",  — CSV file path
-//   "outputFolder": "Versions",      — folder name for generated comps (optional)
-//   "namingColumn": "name"            — which CSV column to use for comp naming (optional)
+//   "templateComp": "Lower Third",   - name of the template composition
+//   "csvPath": "/path/to/data.csv",  - CSV file path
+//   "outputFolder": "Versions",      - folder name for generated comps (optional)
+//   "namingColumn": "name"            - which CSV column to use for comp naming (optional)
 // }
 // CSV columns map to text layer names. Header row is layer names.
 // Example CSV:
@@ -40,7 +40,7 @@
             return;
         }
 
-        // Read CSV — Excel's plain "CSV" save is ANSI/GBK on Chinese Windows
+        // Read CSV - Excel's plain "CSV" save is ANSI/GBK on Chinese Windows
         // and its "CSV UTF-8" save carries a BOM; readTextSmart handles both,
         // parseCSV handles quoted fields with embedded newlines.
         if (!new File(args.csvPath).exists) {

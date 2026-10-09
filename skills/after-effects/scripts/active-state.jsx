@@ -1,4 +1,4 @@
-// active-state.jsx — Returns current AE working state
+// active-state.jsx - Returns current AE working state
 // Output: ae-assistant-result.json (system temp dir - see lib/utils.jsx)
 
 #include "lib/json2.jsx"
@@ -16,7 +16,7 @@
         workAreaEnd: null
     };
 
-    // e.g. "zh_CN" — lets the caller adapt to a localized UI (render template
+    // e.g. "zh_CN" - lets the caller adapt to a localized UI (render template
     // names, display names). Wrapped: very old builds lack isoLanguage.
     try { result.uiLanguage = String(app.isoLanguage); } catch (eLang) {}
 

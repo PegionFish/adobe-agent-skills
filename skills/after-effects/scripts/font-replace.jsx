@@ -110,7 +110,7 @@
             dryRun: dryRun,
             message: dryRun
                 ? "Found " + totalMatches + " text layers using '" + findFont + "' (no changes made)"
-                : "Replaced font in " + totalMatches + " text layers: '" + findFont + "' → '" + replaceFont + "'",
+                : "Replaced font in " + totalMatches + " text layers: '" + findFont + "' -> '" + replaceFont + "'",
             totalMatches: totalMatches,
             replaced: replaced
         });

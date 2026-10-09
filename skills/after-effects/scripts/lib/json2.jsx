@@ -478,8 +478,8 @@ if (typeof JSON !== "object") {
 
 // Parsing is a hand-written recursive-descent parser (see the local
 // modification note at the top of this file). It accepts exactly the JSON
-// grammar — objects, arrays, strings with all escapes, numbers, true/false/
-// null — and throws a SyntaxError on anything else, including trailing
+// grammar - objects, arrays, strings with all escapes, numbers, true/false/
+// null - and throws a SyntaxError on anything else, including trailing
 // garbage. Nothing is ever passed to eval().
 
             var at;     // index of the current character
